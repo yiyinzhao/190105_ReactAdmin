@@ -1,9 +1,13 @@
 import React, { Component } from 'react'
+import {Redirect} from 'react-router-dom'
 import './login.less'
 import './login.css'
 import logo from './images/logo.png'
-import { Form, Icon, Input, Button } from 'antd'
-//import { FormProvider } from 'antd/lib/form/context'
+import { Form, Icon, Input, Button, message } from 'antd'
+import {reqLogin} from '../../api'
+import memoryUtils from '../../utils/memoryUtils'
+import storageUtils from '../../utils/storageUtils'
+
 
 const Item=Form.Item//不能写在import前面
 
@@ -13,12 +17,27 @@ class Login extends Component {
       //阻止事件的默认行为 
       event.preventDefault()
       //对所有form对象字段进行验证
-      this.props.form.validateFields((err, values) => {
+      this.props.form.validateFields(async(err, values) => {
         //检验成功 
         if (!err) {
-          console.log('提交登录的ajax请求，Received values of form: ', values);
-        }else{
-          console.log('校验失败')
+         // console.log('提交登录的ajax请求，Received values of form: ', values);
+         const {username,password}=values 
+         const result=await reqLogin(username,password)//{status:0,data:} {status:1,msg:'xxx'}
+         //console.log('successful!!', response.data)
+         if(result.status===0){//登录成功
+            message.success('login successful!!!')
+            //保存user
+            const user=result.data
+            memoryUtils.user=user//保存在内存中
+            storageUtils.saveUser(user)//保存到local中
+            //跳转到管理界面
+            this.props.history.replace('/')//不用回退，所以不用push
+
+         }else{//登录失败
+            message.error(result.msg)
+         }
+         }else{
+          console.log('Validation Failed!')
         }
       });
       //得到form对象
@@ -46,6 +65,12 @@ class Login extends Component {
    }
    
     render() {
+      //如果用户已经登录，自动跳转到管理界面
+      const user=memoryUtils.user
+      if(user &&user._id){
+        return <Redirect to="/"/>
+      }
+
       //具有 强大功能的form对象 
         const form=this.props.form
         const { getFieldDecorator } =form
